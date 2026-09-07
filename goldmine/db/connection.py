@@ -9,6 +9,18 @@ from goldmine.db.schema import DEFAULT_INTEREST_RATES, DEFAULT_SETTINGS, SCHEMA_
 from goldmine.paths import database_path
 
 
+NEW_COLUMNS = [
+    ("customers", "title", "TEXT"),
+    ("customers", "id_proof_type", "TEXT"),
+    ("customers", "nominee_name", "TEXT"),
+    ("loans", "locker_no", "TEXT"),
+    ("loans", "estimated_value", "REAL"),
+    ("loans", "ltv_percent", "REAL"),
+    ("loans", "close_type", "TEXT"),
+    ("loans", "notice_status", "TEXT"),
+]
+
+
 class Database:
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or database_path()
@@ -25,6 +37,7 @@ class Database:
     def initialize(self) -> None:
         with self._lock:
             self.conn.executescript(SCHEMA_SQL)
+            self._migrate()
             for rate, label, order in DEFAULT_INTEREST_RATES:
                 self.conn.execute(
                     """
@@ -39,6 +52,13 @@ class Database:
                     (key, value),
                 )
             self.conn.commit()
+
+    def _migrate(self) -> None:
+        for table, column, coltype in NEW_COLUMNS:
+            info = self.conn.execute(f"PRAGMA table_info({table})").fetchall()
+            names = {row[1] for row in info}
+            if column not in names:
+                self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
 
     def execute(self, sql: str, params: tuple | list = ()) -> sqlite3.Cursor:
         with self._lock:

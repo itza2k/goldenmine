@@ -6,10 +6,12 @@ from goldmine.app_context import AppContext
 from goldmine.exceptions import AppError
 from goldmine.ui.dialogs import handle_error, owner_auth_dialog, prompt_text, show_info
 from goldmine.ui.theme import GOLD, NAVY, palette, ui_font
+from goldmine.catalog import CLOSE_TYPES, CONDITIONS, JEWELLERY_TYPES, LOAN_FILTERS, NOTICE_STATUS, PAYMENT_KINDS, PAYMENT_METHODS, PURITIES
 from goldmine.ui.widgets import (
     DataTable,
     GhostButton,
     GoldButton,
+    LabeledDropdown,
     LabeledEntry,
     PageHeader,
     SectionLabel,
@@ -27,7 +29,7 @@ class LoansPage(ctk.CTkFrame):
         self._tick_job = None
         p = palette()
 
-        PageHeader(self, "Loans", "Issue, correct (5 minutes), or look up a pledge.", ("New loan", self._new)).pack(
+        PageHeader(self, "Pledge tickets", "Issue, collect, renew, or release a pledge.", ("New ticket", self._new)).pack(
             fill="x"
         )
 
@@ -43,8 +45,8 @@ class LoansPage(ctk.CTkFrame):
         )
         self.search.pack(side="left", fill="x", expand=True)
         self.search.bind("<KeyRelease>", lambda e: self.refresh())
-        self.status = ctk.CTkSegmentedButton(
-            tools, values=["Open", "Closed", "All"], command=lambda _: self.refresh(), height=36
+        self.status = ctk.CTkOptionMenu(
+            tools, values=LOAN_FILTERS, command=lambda _: self.refresh(), width=140, height=36
         )
         self.status.set("Open")
         self.status.pack(side="left", padx=(10, 0))
@@ -107,16 +109,32 @@ class LoansPage(ctk.CTkFrame):
             fill="x", padx=8, pady=(6, 8)
         )
 
-        SectionLabel(form, "2  Gold").pack(anchor="w", padx=8, pady=(6, 4))
-        self.f_gold = LabeledEntry(form, "Jewellery type")
+        SectionLabel(form, "2  Gold in vault").pack(anchor="w", padx=8, pady=(6, 4))
+        self.f_jtype = LabeledDropdown(form, "Jewellery type", JEWELLERY_TYPES)
+        self.f_jtype.pack(fill="x", padx=8, pady=3)
+        self.f_gold = LabeledEntry(form, "Description")
         self.f_gold.pack(fill="x", padx=8, pady=3)
         g2 = ctk.CTkFrame(form, fg_color="transparent")
         g2.pack(fill="x", padx=8)
         g2.grid_columnconfigure((0, 1), weight=1)
-        self.f_weight = LabeledEntry(g2, "Weight (grams)")
+        self.f_weight = LabeledEntry(g2, "Gross weight (g)")
         self.f_weight.grid(row=0, column=0, sticky="ew", padx=(0, 6), pady=3)
-        self.f_purity = LabeledEntry(g2, "Purity", "22K")
-        self.f_purity.grid(row=0, column=1, sticky="ew", pady=3)
+        self.f_stone = LabeledEntry(g2, "Stone weight (g)")
+        self.f_stone.grid(row=0, column=1, sticky="ew", pady=3)
+        g2b = ctk.CTkFrame(form, fg_color="transparent")
+        g2b.pack(fill="x", padx=8)
+        g2b.grid_columnconfigure((0, 1), weight=1)
+        self.f_purity = LabeledDropdown(g2b, "Purity", PURITIES)
+        self.f_purity.grid(row=0, column=0, sticky="ew", padx=(0, 6), pady=3)
+        self.f_cond = LabeledDropdown(g2b, "Condition", CONDITIONS)
+        self.f_cond.grid(row=0, column=1, sticky="ew", pady=3)
+        self.f_locker = LabeledEntry(form, "Locker / packet no.")
+        self.f_locker.pack(fill="x", padx=8, pady=3)
+        self.est_lbl = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=GOLD, font=ui_font(12))
+        self.est_lbl.pack(anchor="w", padx=8)
+        GhostButton(form, text="Value against today's gold rate", height=34, command=self._estimate).pack(
+            fill="x", padx=8, pady=(4, 8)
+        )
 
         SectionLabel(form, "3  Loan").pack(anchor="w", padx=8, pady=(10, 4))
         g3 = ctk.CTkFrame(form, fg_color="transparent")
@@ -140,6 +158,10 @@ class LoansPage(ctk.CTkFrame):
         self.f_remarks.pack(fill="x", padx=8, pady=3)
         self.closed_info = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=p["muted"], font=ui_font(12))
         self.closed_info.pack(anchor="w", padx=8, pady=(8, 4))
+        self.settle_lbl = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=p["text"], font=ui_font(12))
+        self.settle_lbl.pack(anchor="w", padx=8)
+        self.f_notice = LabeledDropdown(form, "Reminder", NOTICE_STATUS)
+        self.f_notice.pack(fill="x", padx=8, pady=6)
 
         foot = ctk.CTkFrame(panel, fg_color="transparent")
         foot.grid(row=2, column=0, sticky="ew", padx=12, pady=(4, 14))
@@ -149,8 +171,11 @@ class LoansPage(ctk.CTkFrame):
         row_b.pack(fill="x", pady=(8, 0))
         self.print_btn = GhostButton(row_b, text="Print receipt", command=self._print)
         self.print_btn.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self.pay_btn = GhostButton(row_b, text="Collect", command=self._pay, width=90)
+        self.pay_btn.pack(side="left", fill="x", expand=True, padx=(0, 6))
         self.close_btn = GoldButton(row_b, text="Close", command=self._close, width=90)
         self.reopen_btn = GhostButton(row_b, text="Reopen", command=self._reopen, width=90)
+        self.renew_btn = GhostButton(foot, text="Renew due date (owner)", command=self._renew)
 
     def _rate_map(self) -> dict[str, float]:
         rates = self.ctx.loans.active_rates()
@@ -241,15 +266,19 @@ class LoansPage(ctk.CTkFrame):
         today = now().date().isoformat()
         self.f_gold.set("")
         self.f_weight.set("")
-        self.f_purity.set("")
+        self.f_stone.set("0")
+        self.f_locker.set("")
+        self.est_lbl.configure(text="")
+        self.settle_lbl.configure(text="")
         self.f_amount.set("")
         self.f_start.set(today)
         self.f_due.set("")
         self.f_remarks.set("")
         self._set_fields_enabled(True)
-        self.save_btn.configure(state="normal", text="Create loan")
+        self.save_btn.configure(state="normal", text="Create ticket")
         self.close_btn.pack_forget()
         self.reopen_btn.pack_forget()
+        self.renew_btn.pack_forget()
         self._load_rates()
         self.cust_search.focus()
 
@@ -271,7 +300,31 @@ class LoansPage(ctk.CTkFrame):
         self.sel_cust.configure(text=f"Using {loan['customer_name']}  ·  {loan['customer_phone']}")
         self.f_gold.set(loan["gold_description"])
         self.f_weight.set(loan["gold_weight"])
-        self.f_purity.set(loan.get("gold_purity") or "")
+        self.f_purity.set(loan.get("gold_purity") or "22K / 916")
+        self.f_locker.set(loan.get("locker_no") or "")
+        items = loan.get("items") or []
+        if items:
+            first = items[0]
+            self.f_jtype.set(first.get("jewellery_type") or JEWELLERY_TYPES[0])
+            self.f_stone.set(first.get("stone_weight") or 0)
+            self.f_cond.set(first.get("condition_label") or "Good")
+            if first.get("purity"):
+                self.f_purity.set(first["purity"])
+        else:
+            self.f_stone.set("0")
+        self.f_notice.set(loan.get("notice_status") or "Not sent")
+        try:
+            st = self.ctx.shop.settlement(loan)
+            symbol = self.ctx.settings.get("currency_symbol", "₹")
+            self.settle_lbl.configure(
+                text=(
+                    f"{st['months']} month(s)  ·  Interest {money(st['interest_accrued'], symbol)}  ·  "
+                    f"Paid {money(st['paid'], symbol)}  ·  Due {money(st['outstanding'], symbol)}"
+                    + (f"  ·  Overdue {st['overdue_days']}d" if st["overdue_days"] else "")
+                )
+            )
+        except Exception:
+            self.settle_lbl.configure(text="")
         self.f_amount.set(loan["loan_amount"])
         self.f_start.set(loan["start_date"])
         self.f_due.set(loan.get("due_date") or "")
@@ -324,8 +377,10 @@ class LoansPage(ctk.CTkFrame):
         owner = bool(user and user.is_owner)
         self.close_btn.pack_forget()
         self.reopen_btn.pack_forget()
+        self.renew_btn.pack_forget()
         if owner and loan["status"] == "open":
             self.close_btn.pack(side="left", fill="x", expand=True)
+            self.renew_btn.pack(fill="x", pady=(8, 0))
         elif owner and loan["status"] == "closed":
             self.reopen_btn.pack(side="left", fill="x", expand=True)
         if not owner:
@@ -354,7 +409,19 @@ class LoansPage(ctk.CTkFrame):
 
     def _set_fields_enabled(self, enabled: bool):
         state = "normal" if enabled else "disabled"
-        for f in (self.f_gold, self.f_weight, self.f_purity, self.f_amount, self.f_start, self.f_due, self.f_remarks):
+        for f in (
+            self.f_gold,
+            self.f_weight,
+            self.f_stone,
+            self.f_purity,
+            self.f_jtype,
+            self.f_cond,
+            self.f_locker,
+            self.f_amount,
+            self.f_start,
+            self.f_due,
+            self.f_remarks,
+        ):
             f.configure_state(state)
         self.rate_menu.configure(state=state)
 
@@ -367,16 +434,24 @@ class LoansPage(ctk.CTkFrame):
                 rate = float(str(label).split("%")[0])
             except ValueError:
                 rate = None
+        try:
+            gross = float(self.f_weight.get() or 0)
+            stone = float(self.f_stone.get() or 0)
+        except ValueError:
+            gross, stone = 0, 0
+        net = max(gross - stone, 0)
+        desc = (self.f_gold.get() or "").strip() or self.f_jtype.get()
         return {
             "customer_id": self.customer_id,
-            "gold_description": self.f_gold.get(),
-            "gold_weight": self.f_weight.get(),
+            "gold_description": desc,
+            "gold_weight": net or self.f_weight.get(),
             "gold_purity": self.f_purity.get(),
             "loan_amount": self.f_amount.get(),
             "interest_rate": rate,
             "start_date": self.f_start.get().strip(),
             "due_date": self.f_due.get().strip(),
             "remarks": self.f_remarks.get(),
+            "locker_no": self.f_locker.get(),
         }
 
     def _save(self):
@@ -407,7 +482,44 @@ class LoansPage(ctk.CTkFrame):
         except AppError as exc:
             handle_error(self, exc)
             return
+        lid = self.current_id
+        if lid:
+            try:
+                self.ctx.shop.replace_items(self.ctx.user, lid, [self._item_payload()])
+                self.ctx.shop.set_notice(self.ctx.user, lid, self.f_notice.get())
+            except AppError as exc:
+                handle_error(self, exc)
         self.refresh()
+
+    def _item_payload(self) -> dict:
+        try:
+            gross = float(self.f_weight.get() or 0)
+            stone = float(self.f_stone.get() or 0)
+        except ValueError:
+            gross, stone = 0.0, 0.0
+        return {
+            "jewellery_type": self.f_jtype.get(),
+            "description": self.f_gold.get(),
+            "purity": self.f_purity.get(),
+            "gross_weight": gross,
+            "stone_weight": stone,
+            "condition_label": self.f_cond.get(),
+        }
+
+    def _estimate(self):
+        try:
+            gross = float(self.f_weight.get() or 0)
+            stone = float(self.f_stone.get() or 0)
+            est = self.ctx.shop.estimate(max(gross - stone, 0), self.f_purity.get())
+        except (AppError, ValueError) as exc:
+            handle_error(self, exc if isinstance(exc, AppError) else AppError("Enter a valid weight first."))
+            return
+        symbol = self.ctx.settings.get("currency_symbol", "₹")
+        self.est_lbl.configure(
+            text=f"Fine {est['fine_gold']} g  ·  Value {money(est['estimated_value'], symbol)}  ·  Max loan {money(est['max_loan'], symbol)} at {est['ltv']}% LTV"
+        )
+        if not self.f_amount.get().strip():
+            self.f_amount.set(est["max_loan"])
 
     def _print(self):
         if not self.current_id:
@@ -437,6 +549,8 @@ class LoansPage(ctk.CTkFrame):
         ctk.CTkLabel(box, text="Enter what the customer paid today.", text_color=p["muted"], font=ui_font(12)).pack(
             padx=20, anchor="w"
         )
+        ctype = LabeledDropdown(box, "Close as", CLOSE_TYPES)
+        ctype.pack(fill="x", padx=20, pady=4)
         d = LabeledEntry(box, "Closing date (YYYY-MM-DD)")
         d.set(now().date().isoformat())
         d.pack(fill="x", padx=20, pady=4)
@@ -456,6 +570,7 @@ class LoansPage(ctk.CTkFrame):
                     interest_collected=i.get(),
                     total_received=t.get(),
                     remarks=r.get(),
+                    close_type=ctype.get(),
                 )
             except (AppError, ValueError) as exc:
                 handle_error(self, exc if isinstance(exc, AppError) else AppError(str(exc)))
@@ -480,3 +595,76 @@ class LoansPage(ctk.CTkFrame):
             return
         self.refresh()
         self._load(self.current_id)
+
+    def _pay(self):
+        if not self.current_id:
+            handle_error(self, AppError("Open a ticket first."))
+            return
+        win = ctk.CTkToplevel(self)
+        win.title("Collect")
+        win.geometry("420x360")
+        win.transient(self.winfo_toplevel())
+        win.grab_set()
+        p = palette()
+        box = ctk.CTkFrame(win, fg_color=p["card"])
+        box.pack(fill="both", expand=True)
+        ctk.CTkLabel(box, text="Record a collection", font=ui_font(18, "bold"), text_color=p["text"]).pack(
+            padx=20, pady=(16, 6), anchor="w"
+        )
+        amt = LabeledEntry(box, "Amount")
+        amt.pack(fill="x", padx=20, pady=4)
+        kind = LabeledDropdown(box, "Towards", PAYMENT_KINDS)
+        kind.pack(fill="x", padx=20, pady=4)
+        method = LabeledDropdown(box, "Received by", PAYMENT_METHODS)
+        method.pack(fill="x", padx=20, pady=4)
+        dt = LabeledEntry(box, "Date")
+        dt.set(now().date().isoformat())
+        dt.pack(fill="x", padx=20, pady=4)
+
+        def go():
+            try:
+                self.ctx.shop.record_payment(
+                    self.ctx.user,
+                    self.current_id,
+                    amount=amt.get(),
+                    kind=kind.get(),
+                    method=method.get(),
+                    payment_date=dt.get().strip(),
+                    remarks="",
+                )
+            except AppError as exc:
+                handle_error(self, exc)
+                return
+            win.destroy()
+            show_info(self, "Collection recorded.")
+            self._load(self.current_id)
+
+        GoldButton(box, text="Save collection", command=go).pack(padx=20, pady=14, fill="x")
+
+    def _renew(self):
+        if not self.current_id:
+            return
+        win = ctk.CTkToplevel(self)
+        win.title("Renew")
+        win.geometry("400x240")
+        win.transient(self.winfo_toplevel())
+        win.grab_set()
+        p = palette()
+        box = ctk.CTkFrame(win, fg_color=p["card"])
+        box.pack(fill="both", expand=True)
+        due = LabeledEntry(box, "New due date")
+        due.pack(fill="x", padx=20, pady=(20, 4))
+        reason = LabeledEntry(box, "Reason")
+        reason.pack(fill="x", padx=20, pady=4)
+
+        def go():
+            try:
+                self.ctx.shop.renew(self.ctx.user, self.current_id, due.get().strip(), reason.get())
+            except AppError as exc:
+                handle_error(self, exc)
+                return
+            win.destroy()
+            self._load(self.current_id)
+            self.refresh()
+
+        GoldButton(box, text="Renew ticket", command=go).pack(padx=20, pady=16, fill="x")

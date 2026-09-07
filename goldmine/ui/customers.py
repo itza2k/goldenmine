@@ -7,7 +7,8 @@ from goldmine.exceptions import AppError
 from goldmine.paths import EDIT_WINDOW_SECONDS
 from goldmine.ui.dialogs import handle_error, show_info
 from goldmine.ui.theme import GOLD, palette, ui_font
-from goldmine.ui.widgets import DataTable, GoldButton, LabeledEntry, PageHeader
+from goldmine.catalog import ID_PROOF_TYPES, TITLES
+from goldmine.ui.widgets import DataTable, GoldButton, LabeledDropdown, LabeledEntry, PageHeader
 from goldmine.util import format_dt
 
 
@@ -65,14 +66,23 @@ class CustomersPage(ctk.CTkFrame):
             text_color=p["muted"],
             font=ui_font(12),
         ).pack(anchor="w", pady=(2, 12))
+        row = ctk.CTkFrame(inner, fg_color="transparent")
+        row.pack(fill="x", pady=5)
+        row.grid_columnconfigure((0, 1), weight=1)
+        self.f_title = LabeledDropdown(row, "Title", TITLES)
+        self.f_title.grid(row=0, column=0, sticky="ew", padx=(0, 6))
+        self.f_idtype = LabeledDropdown(row, "ID proof", ID_PROOF_TYPES)
+        self.f_idtype.grid(row=0, column=1, sticky="ew")
         self.f_name = LabeledEntry(inner, "Full name")
         self.f_name.pack(fill="x", pady=5)
         self.f_phone = LabeledEntry(inner, "Phone")
         self.f_phone.pack(fill="x", pady=5)
         self.f_addr = LabeledEntry(inner, "Address (optional)")
         self.f_addr.pack(fill="x", pady=5)
-        self.f_gov = LabeledEntry(inner, "Government ID (optional)")
+        self.f_gov = LabeledEntry(inner, "ID number (optional)")
         self.f_gov.pack(fill="x", pady=5)
+        self.f_nom = LabeledEntry(inner, "Nominee (optional)")
+        self.f_nom.pack(fill="x", pady=5)
         self.lock_note = ctk.CTkLabel(inner, text="", wraplength=280, justify="left", text_color=GOLD, font=ui_font(12))
         self.lock_note.pack(anchor="w", pady=(10, 0))
         self.save_btn = GoldButton(inner, text="Save customer", command=self._save)
@@ -87,9 +97,11 @@ class CustomersPage(ctk.CTkFrame):
     def _new(self):
         self.current_id = None
         self.form_title.configure(text="New customer")
-        for f in (self.f_name, self.f_phone, self.f_addr, self.f_gov):
+        for f in (self.f_name, self.f_phone, self.f_addr, self.f_gov, self.f_nom):
             f.set("")
             f.configure_state("normal")
+        self.f_title.configure_state("normal")
+        self.f_idtype.configure_state("normal")
         self.lock_note.configure(text="")
         self.save_btn.configure(state="normal")
         self.f_name.entry.focus()
@@ -108,11 +120,14 @@ class CustomersPage(ctk.CTkFrame):
         self.f_phone.set(data["phone"])
         self.f_addr.set(data.get("address") or "")
         self.f_gov.set(data.get("government_id") or "")
+        self.f_nom.set(data.get("nominee_name") or "")
+        self.f_title.set(data.get("title") or "Mr")
+        self.f_idtype.set(data.get("id_proof_type") or "Aadhaar")
         locked = self.ctx.user and self.ctx.user.is_employee and self.ctx.customers.has_locked_loans(
             cid, EDIT_WINDOW_SECONDS
         )
         state = "disabled" if locked else "normal"
-        for f in (self.f_name, self.f_phone, self.f_addr, self.f_gov):
+        for f in (self.f_name, self.f_phone, self.f_addr, self.f_gov, self.f_nom, self.f_title, self.f_idtype):
             f.configure_state(state)
         self.save_btn.configure(state=state)
         self.lock_note.configure(
@@ -125,6 +140,9 @@ class CustomersPage(ctk.CTkFrame):
             "phone": self.f_phone.get(),
             "address": self.f_addr.get(),
             "government_id": self.f_gov.get(),
+            "title": self.f_title.get(),
+            "id_proof_type": self.f_idtype.get(),
+            "nominee_name": self.f_nom.get(),
         }
         try:
             if self.current_id is None:

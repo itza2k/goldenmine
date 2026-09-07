@@ -20,7 +20,10 @@ EMPLOYEE_ALLOWED = {
     "loan.search",
     "loan.update_unlocked",
     "loan.print",
+    "loan.pay",
+    "loan.notice",
     "dashboard.view",
+    "vault.view",
 }
 
 OWNER_ONLY = {

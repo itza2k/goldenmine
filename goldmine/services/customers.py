@@ -64,14 +64,17 @@ class CustomerService:
             raise ValidationError("A customer with this phone number already exists. Search and reuse that profile.")
         self.db.execute(
             """
-            INSERT INTO customers (name, phone, address, government_id, created_at, created_by)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO customers (name, phone, address, government_id, title, id_proof_type, nominee_name, created_at, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 payload["name"],
                 payload["phone"],
                 payload["address"],
                 payload["government_id"],
+                payload["title"],
+                payload["id_proof_type"],
+                payload["nominee_name"],
                 now_iso(),
                 user.id,
             ),
@@ -100,7 +103,7 @@ class CustomerService:
         self.db.execute(
             """
             UPDATE customers
-            SET name = ?, phone = ?, address = ?, government_id = ?, updated_at = ?, updated_by = ?
+            SET name = ?, phone = ?, address = ?, government_id = ?, title = ?, id_proof_type = ?, nominee_name = ?, updated_at = ?, updated_by = ?
             WHERE id = ?
             """,
             (
@@ -108,6 +111,9 @@ class CustomerService:
                 payload["phone"],
                 payload["address"],
                 payload["government_id"],
+                payload["title"],
+                payload["id_proof_type"],
+                payload["nominee_name"],
                 now_iso(),
                 user.id,
                 customer_id,
@@ -130,6 +136,9 @@ class CustomerService:
         phone = re.sub(r"\s+", "", (data.get("phone") or "").strip())
         address = (data.get("address") or "").strip() or None
         gov = (data.get("government_id") or "").strip() or None
+        title = (data.get("title") or "Mr").strip()
+        id_type = (data.get("id_proof_type") or "").strip() or None
+        nominee = (data.get("nominee_name") or "").strip() or None
         if not name:
             raise ValidationError("Customer name is required.")
         if len(name) < 2:
@@ -138,4 +147,12 @@ class CustomerService:
             raise ValidationError("Phone number is required.")
         if not PHONE_RE.match(phone):
             raise ValidationError("Enter a valid phone number (7–20 digits).")
-        return {"name": name, "phone": phone, "address": address, "government_id": gov}
+        return {
+            "name": name,
+            "phone": phone,
+            "address": address,
+            "government_id": gov,
+            "title": title,
+            "id_proof_type": id_type,
+            "nominee_name": nominee,
+        }

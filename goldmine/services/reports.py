@@ -35,6 +35,20 @@ class ReportService:
             "SELECT COALESCE(SUM(total_received),0) AS s FROM loans WHERE status='closed' AND closing_date = ?",
             (today,),
         )
+        pay_today = self.db.fetchone(
+            "SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE payment_date = ?",
+            (today,),
+        )
+        overdue = self.db.fetchone(
+            "SELECT COUNT(*) AS c FROM loans WHERE status='open' AND due_date IS NOT NULL AND due_date < ?",
+            (today,),
+        )
+        vault = self.db.fetchone(
+            """
+            SELECT COUNT(*) AS c, COALESCE(SUM(net_weight),0) AS w
+            FROM loan_items i JOIN loans l ON l.id = i.loan_id WHERE l.status='open'
+            """
+        )
         due = self.db.fetchall(
             """
             SELECT l.loan_number, l.due_date, l.loan_amount, c.name AS customer_name
@@ -50,7 +64,10 @@ class ReportService:
             "outstanding": active["s"],
             "issued_today": issued["c"],
             "closed_today": closed["c"],
-            "collections_today": collections["s"],
+            "collections_today": collections["s"] + pay_today["s"],
+            "overdue_count": overdue["c"],
+            "vault_items": vault["c"],
+            "vault_weight": vault["w"],
             "due_soon": rows_to_dicts(due),
             "recent_customers": rows_to_dicts(recent),
             "due_soon_days": due_days,
@@ -89,6 +106,14 @@ class ReportService:
             a = date_from or today.isoformat()
             b = date_to or today.isoformat()
             return a, b, f"Employee activity — {a} to {b}"
+        if kind == "overdue":
+            return "0000-01-01", "9999-12-31", "Overdue pledges"
+        if kind == "vault":
+            return "0000-01-01", "9999-12-31", "Vault inventory"
+        if kind == "collections":
+            a = date_from or today.isoformat()
+            b = date_to or today.isoformat()
+            return a, b, f"Collections — {a} to {b}"
         raise ValidationError("Unknown report type.")
 
     def generate(self, user: CurrentUser, kind: str, date_from: str | None = None, date_to: str | None = None) -> dict:
@@ -152,6 +177,55 @@ class ReportService:
                 "interest": sum(r["interest_collected"] or 0 for r in rows),
                 "received": sum(r["total_received"] or 0 for r in rows),
             }
+        elif kind == "overdue":
+            today = now().date().isoformat()
+            rows = rows_to_dicts(
+                self.db.fetchall(
+                    """
+                    SELECT l.loan_number, c.name, c.phone, l.loan_amount, l.due_date, l.locker_no
+                    FROM loans l JOIN customers c ON c.id = l.customer_id
+                    WHERE l.status='open' AND l.due_date IS NOT NULL AND l.due_date < ?
+                    ORDER BY l.due_date
+                    """,
+                    (today,),
+                )
+            )
+            columns = ["loan_number", "name", "phone", "loan_amount", "due_date", "locker_no"]
+            headers = ["Loan #", "Customer", "Phone", "Amount", "Due", "Locker"]
+            summary = {"count": len(rows), "amount": sum(r["loan_amount"] or 0 for r in rows)}
+        elif kind == "vault":
+            rows = rows_to_dicts(
+                self.db.fetchall(
+                    """
+                    SELECT l.loan_number, c.name, i.jewellery_type, i.purity, i.net_weight, l.locker_no
+                    FROM loan_items i
+                    JOIN loans l ON l.id = i.loan_id
+                    JOIN customers c ON c.id = l.customer_id
+                    WHERE l.status='open'
+                    ORDER BY l.loan_number
+                    """
+                )
+            )
+            columns = ["loan_number", "name", "jewellery_type", "purity", "net_weight", "locker_no"]
+            headers = ["Loan #", "Customer", "Item", "Purity", "Net g", "Locker"]
+            summary = {"pieces": len(rows), "weight": sum(r["net_weight"] or 0 for r in rows)}
+        elif kind == "collections":
+            rows = rows_to_dicts(
+                self.db.fetchall(
+                    """
+                    SELECT p.payment_date, l.loan_number, c.name, p.kind, p.method, p.amount
+                    FROM payments p
+                    JOIN loans l ON l.id = p.loan_id
+                    JOIN customers c ON c.id = l.customer_id
+                    WHERE p.payment_date >= ? AND p.payment_date <= ?
+                    ORDER BY p.id
+                    """,
+                    (start, end),
+                )
+            )
+            columns = ["payment_date", "loan_number", "name", "kind", "method", "amount"]
+            headers = ["Date", "Loan #", "Customer", "Type", "Method", "Amount"]
+            summary = {"count": len(rows), "total": sum(r["amount"] or 0 for r in rows)}
         elif kind == "interest":
             rows = rows_to_dicts(
                 self.db.fetchall(

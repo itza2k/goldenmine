@@ -130,6 +130,45 @@ class LabeledEntry(ctk.CTkFrame):
         self.entry.configure(state=state)
 
 
+class LabeledDropdown(ctk.CTkFrame):
+    def __init__(self, master, label: str, values: list[str], **kwargs):
+        p = palette()
+        super().__init__(master, fg_color="transparent")
+        ctk.CTkLabel(self, text=label, text_color=p["muted"], font=ui_font(11, "bold")).pack(anchor="w")
+        vals = values or ["—"]
+        self.menu = ctk.CTkOptionMenu(
+            self,
+            values=vals,
+            height=40,
+            corner_radius=8,
+            fg_color=NAVY,
+            button_color=GOLD,
+            button_hover_color=GOLD_HOVER,
+            text_color="#FFF6E4",
+            font=ui_font(13),
+            dropdown_fg_color=NAVY,
+            dropdown_text_color="#FFF6E4",
+            **kwargs,
+        )
+        self.menu.pack(fill="x", pady=(5, 0))
+        self.menu.set(vals[0])
+
+    def get(self) -> str:
+        return self.menu.get()
+
+    def set(self, value) -> None:
+        if value in self.menu.cget("values"):
+            self.menu.set(str(value))
+        elif value:
+            current = list(self.menu.cget("values"))
+            if str(value) not in current:
+                self.menu.configure(values=current + [str(value)])
+            self.menu.set(str(value))
+
+    def configure_state(self, state: str) -> None:
+        self.menu.configure(state=state)
+
+
 class GoldButton(ctk.CTkButton):
     def __init__(self, master, **kwargs):
         kwargs.setdefault("fg_color", GOLD)

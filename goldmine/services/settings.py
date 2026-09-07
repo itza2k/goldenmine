@@ -37,16 +37,22 @@ class SettingsService:
             "appearance_mode",
             "due_soon_days",
             "receipt_footer",
+            "default_ltv",
+            "gold_rate_22k",
+            "gold_rate_24k",
+            "min_interest_days",
         }
         for key, value in values.items():
             if key not in allowed:
                 raise ValidationError(f"Unknown setting: {key}")
-            if key in ("backup_retain_count", "due_soon_days"):
+            if key in ("backup_retain_count", "due_soon_days", "min_interest_days", "default_ltv"):
                 try:
-                    n = int(value)
+                    n = int(float(value))
                 except ValueError:
                     raise ValidationError(f"{key} must be a number.")
-                if n < 1 or n > 365:
+                if key == "default_ltv" and (n < 1 or n > 100):
+                    raise ValidationError("LTV must be between 1 and 100.")
+                if key != "default_ltv" and (n < 1 or n > 365):
                     raise ValidationError(f"{key} must be between 1 and 365.")
             if key == "shop_name" and not str(value).strip():
                 raise ValidationError("Shop name is required.")

@@ -21,7 +21,7 @@ class SettingsPage(ctk.CTkFrame):
 
         self.tabs = ctk.CTkTabview(self)
         self.tabs.pack(fill="both", expand=True, pady=10)
-        for name in ("Shop", "Interest rates", "Users", "Backup", "My password"):
+        for name in ("Shop", "Gold rate", "Interest rates", "Users", "Backup", "My password"):
             self.tabs.add(name)
 
         shop = self.tabs.tab("Shop")
@@ -45,6 +45,24 @@ class SettingsPage(ctk.CTkFrame):
         self.appearance = ctk.CTkSegmentedButton(shop, values=["light", "dark", "system"], command=self._theme)
         self.appearance.pack(anchor="w")
         GoldButton(shop, text="Save shop settings", command=self._save_shop).pack(anchor="w", pady=16)
+
+        gold = self.tabs.tab("Gold rate")
+        ctk.CTkLabel(
+            gold,
+            text="Today's bullion rate is used to value ornaments and suggest a maximum loan.",
+            wraplength=640,
+            justify="left",
+            text_color=p["muted"],
+        ).pack(anchor="w", pady=(4, 8))
+        self.s_22 = LabeledEntry(gold, "22K rate per gram")
+        self.s_22.pack(fill="x", pady=4)
+        self.s_24 = LabeledEntry(gold, "24K rate per gram")
+        self.s_24.pack(fill="x", pady=4)
+        self.s_ltv = LabeledEntry(gold, "Default loan-to-value %")
+        self.s_ltv.pack(fill="x", pady=4)
+        self.s_mindays = LabeledEntry(gold, "Minimum interest days")
+        self.s_mindays.pack(fill="x", pady=4)
+        GoldButton(gold, text="Post today's gold rate", command=self._save_gold).pack(anchor="w", pady=12)
 
         rates = self.tabs.tab("Interest rates")
         self.rate_table = DataTable(rates, [("rate", "Rate %", 80), ("label", "Label", 200), ("is_active", "Active", 80)])
@@ -114,6 +132,11 @@ class SettingsPage(ctk.CTkFrame):
         self.s_keep.set(s.get("backup_retain_count", "14"))
         self.s_foot.set(s.get("receipt_footer", ""))
         self.appearance.set(s.get("appearance_mode", "light"))
+        rate = self.ctx.shop.gold_rate()
+        self.s_22.set(rate.get("rate_22k") or "")
+        self.s_24.set(rate.get("rate_24k") or "")
+        self.s_ltv.set(s.get("default_ltv", "75"))
+        self.s_mindays.set(s.get("min_interest_days", "15"))
         rates = self.ctx.settings.list_rates(self.ctx.user)
         for r in rates:
             r["is_active"] = "Yes" if r["is_active"] else "No"
@@ -150,6 +173,17 @@ class SettingsPage(ctk.CTkFrame):
                 },
             )
             show_info(self, "Settings saved.")
+        except AppError as exc:
+            handle_error(self, exc)
+
+    def _save_gold(self):
+        try:
+            self.ctx.shop.set_gold_rate(self.ctx.user, self.s_22.get(), self.s_24.get())
+            self.ctx.settings.update_many(
+                self.ctx.user,
+                {"default_ltv": self.s_ltv.get(), "min_interest_days": self.s_mindays.get()},
+            )
+            show_info(self, "Gold rate posted for today.")
         except AppError as exc:
             handle_error(self, exc)
 

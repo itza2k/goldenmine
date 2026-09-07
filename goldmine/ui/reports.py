@@ -31,6 +31,9 @@ class ReportsPage(ctk.CTkFrame):
             ("closed", "Closed loans"),
             ("interest", "Interest earned"),
             ("activity", "Employee activity"),
+            ("overdue", "Overdue pledges"),
+            ("vault", "Vault inventory"),
+            ("collections", "Collections"),
         ]
         self._kind_map = {v: k for k, v in kinds}
         self.kind = ctk.CTkOptionMenu(inner, values=[k[1] for k in kinds], width=180, height=36)

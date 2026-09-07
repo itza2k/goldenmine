@@ -107,6 +107,52 @@ BEFORE DELETE ON loans
 BEGIN
     SELECT RAISE(ABORT, 'Loans cannot be deleted');
 END;
+
+CREATE TABLE IF NOT EXISTS loan_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_id INTEGER NOT NULL,
+    jewellery_type TEXT NOT NULL,
+    description TEXT,
+    purity TEXT,
+    gross_weight REAL NOT NULL DEFAULT 0,
+    stone_weight REAL NOT NULL DEFAULT 0,
+    net_weight REAL NOT NULL DEFAULT 0,
+    condition_label TEXT,
+    estimated_value REAL,
+    FOREIGN KEY (loan_id) REFERENCES loans(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_items_loan ON loan_items(loan_id);
+
+CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    loan_id INTEGER NOT NULL,
+    payment_date TEXT NOT NULL,
+    amount REAL NOT NULL CHECK (amount > 0),
+    kind TEXT NOT NULL,
+    method TEXT NOT NULL,
+    remarks TEXT,
+    created_at TEXT NOT NULL,
+    created_by INTEGER NOT NULL,
+    FOREIGN KEY (loan_id) REFERENCES loans(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_payments_loan ON payments(loan_id);
+
+CREATE TRIGGER IF NOT EXISTS payments_no_delete
+BEFORE DELETE ON payments
+BEGIN
+    SELECT RAISE(ABORT, 'Payments cannot be deleted');
+END;
+
+CREATE TABLE IF NOT EXISTS gold_rates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rate_date TEXT NOT NULL UNIQUE,
+    rate_22k REAL NOT NULL,
+    rate_24k REAL NOT NULL,
+    set_by INTEGER,
+    created_at TEXT NOT NULL
+);
 """
 
 DEFAULT_INTEREST_RATES = [
@@ -125,6 +171,10 @@ DEFAULT_SETTINGS = {
     "backup_retain_count": "14",
     "appearance_mode": "light",
     "due_soon_days": "7",
-    "receipt_footer": "Thank you for your business.",
+    "receipt_footer": "Thank you for your business. Ornaments released only against this ticket.",
     "setup_complete": "0",
+    "default_ltv": "75",
+    "gold_rate_22k": "0",
+    "gold_rate_24k": "0",
+    "min_interest_days": "15",
 }

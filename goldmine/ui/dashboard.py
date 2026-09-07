@@ -13,7 +13,7 @@ class DashboardPage(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent")
         self.ctx = ctx
         self.on_open_loans = on_open_loans
-        self.header = PageHeader(self, "Home", "Today at a glance")
+        self.header = PageHeader(self, "Pledge desk", "Today at the counter")
         self.header.pack(fill="x", pady=(0, 14))
 
         self.stats = ctk.CTkFrame(self, fg_color="transparent")
@@ -34,11 +34,13 @@ class DashboardPage(ctk.CTkFrame):
 
         extra = ctk.CTkFrame(self, fg_color="transparent")
         extra.pack(fill="x", pady=(10, 0))
-        extra.grid_columnconfigure((0, 1), weight=1, uniform="kpi2")
+        extra.grid_columnconfigure((0, 1, 2), weight=1, uniform="kpi2")
         self.out_card = StatCard(extra, "Outstanding", "—", "Principal still out")
         self.out_card.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
         self.due_card = StatCard(extra, "Due soon", "0", "Needs follow-up")
-        self.due_card.grid(row=0, column=1, sticky="nsew")
+        self.due_card.grid(row=0, column=1, sticky="nsew", padx=(0, 10))
+        self.over_card = StatCard(extra, "Overdue", "0", "Past due date")
+        self.over_card.grid(row=0, column=2, sticky="nsew")
 
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.pack(fill="both", expand=True, pady=(14, 0))
@@ -86,6 +88,7 @@ class DashboardPage(ctk.CTkFrame):
         self.cards["collect"].set(money(data["collections_today"], symbol))
         self.out_card.set(money(data["outstanding"], symbol))
         self.due_card.set(str(len(data["due_soon"])), f"Next {data['due_soon_days']} days")
+        self.over_card.set(str(data.get("overdue_count", 0)), f"{data.get('vault_items', 0)} pieces in vault")
 
         for w in self.due_list.winfo_children():
             w.destroy()

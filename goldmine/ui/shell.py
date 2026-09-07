@@ -7,6 +7,7 @@ from goldmine.ui.audit import AuditPage
 from goldmine.ui.customers import CustomersPage
 from goldmine.ui.dashboard import DashboardPage
 from goldmine.ui.loans import LoansPage
+from goldmine.ui.vault import VaultPage
 from goldmine.ui.reports import ReportsPage
 from goldmine.ui.settings import SettingsPage
 from goldmine.ui.theme import GOLD, NAVY, palette, ui_font
@@ -34,7 +35,7 @@ class ShellFrame(ctk.CTkFrame):
         ctk.CTkLabel(mark, text="G", text_color=NAVY, font=ui_font(18, "bold")).pack(expand=True)
         names = ctk.CTkFrame(brand, fg_color="transparent")
         names.pack(side="left", padx=(10, 0), fill="x", expand=True)
-        ctk.CTkLabel(names, text="Goldmine", text_color=GOLD, font=ui_font(16, "bold"), anchor="w").pack(fill="x")
+        ctk.CTkLabel(names, text="GOLD MINE", text_color=GOLD, font=ui_font(15, "bold"), anchor="w").pack(fill="x")
         self.shop_lbl = ctk.CTkLabel(names, text="", text_color="#A9B3C6", font=ui_font(11), anchor="w")
         self.shop_lbl.pack(fill="x")
 
@@ -56,7 +57,8 @@ class ShellFrame(ctk.CTkFrame):
         owner = bool(ctx.user and ctx.user.is_owner)
         self._nav_group("Counter")
         self._nav_btn("dashboard", "Home")
-        self._nav_btn("loans", "Loans")
+        self._nav_btn("loans", "Tickets")
+        self._nav_btn("vault", "Vault")
         self._nav_btn("customers", "Customers")
         if owner:
             self._nav_group("Owner")
@@ -89,8 +91,9 @@ class ShellFrame(ctk.CTkFrame):
         QuietButton(self.sidebar, text="Sign out", command=self._logout).pack(fill="x", padx=12, pady=(0, 16))
 
         self.pages["dashboard"] = DashboardPage(self.content, ctx, on_open_loans=lambda: self.show("loans"))
-        self.pages["customers"] = CustomersPage(self.content, ctx)
         self.pages["loans"] = LoansPage(self.content, ctx)
+        self.pages["vault"] = VaultPage(self.content, ctx)
+        self.pages["customers"] = CustomersPage(self.content, ctx)
         if owner:
             self.pages["reports"] = ReportsPage(self.content, ctx)
             self.pages["audit"] = AuditPage(self.content, ctx)

@@ -51,6 +51,9 @@ class LoanService:
         data = _loan_with_customer(row)
         if not data:
             raise NotFoundError("Loan not found.")
+        data["items"] = rows_to_dicts(
+            self.db.fetchall("SELECT * FROM loan_items WHERE loan_id = ? ORDER BY id", (loan_id,))
+        )
         return data
 
     def get_by_number(self, loan_number: str) -> dict:
@@ -64,15 +67,24 @@ class LoanService:
         q = (query or "").strip()
         clauses = ["1=1"]
         params: list = []
-        if status in ("open", "closed"):
-            clauses.append("l.status = ?")
-            params.append(status)
+        today = now().date().isoformat()
+        soon = (now().date() + timedelta(days=7)).isoformat()
+        if status == "open":
+            clauses.append("l.status = 'open'")
+        elif status == "closed":
+            clauses.append("l.status = 'closed'")
+        elif status == "overdue":
+            clauses.append("l.status = 'open' AND l.due_date IS NOT NULL AND l.due_date < ?")
+            params.append(today)
+        elif status == "due soon":
+            clauses.append("l.status = 'open' AND l.due_date IS NOT NULL AND l.due_date >= ? AND l.due_date <= ?")
+            params.extend([today, soon])
         if q:
             clauses.append(
-                "(l.loan_number LIKE ? OR c.name LIKE ? COLLATE NOCASE OR c.phone LIKE ?)"
+                "(l.loan_number LIKE ? OR c.name LIKE ? COLLATE NOCASE OR c.phone LIKE ? OR l.locker_no LIKE ? OR l.gold_description LIKE ?)"
             )
             like = f"%{q}%"
-            params.extend([like, like, like])
+            params.extend([like, like, like, like, like])
         rows = self.db.fetchall(
             LOAN_SELECT
             + f" WHERE {' AND '.join(clauses)} ORDER BY l.id DESC LIMIT 400",
@@ -161,6 +173,12 @@ class LoanService:
         customer_id = data.get("customer_id")
         if creating and not customer_id:
             raise ValidationError("Select or create a customer first.")
+        locker = (data.get("locker_no") or "").strip() or None
+        try:
+            est = float(data["estimated_value"]) if data.get("estimated_value") not in (None, "") else None
+            ltv = float(data["ltv_percent"]) if data.get("ltv_percent") not in (None, "") else None
+        except (TypeError, ValueError):
+            raise ValidationError("Estimated value and LTV must be numbers.")
         return {
             "customer_id": int(customer_id) if customer_id else None,
             "gold_description": desc,
@@ -171,6 +189,9 @@ class LoanService:
             "start_date": start,
             "due_date": due,
             "remarks": remarks,
+            "locker_no": locker,
+            "estimated_value": round(est, 2) if est is not None else None,
+            "ltv_percent": round(ltv, 2) if ltv is not None else None,
         }
 
     def create(self, user: CurrentUser, data: dict) -> dict:
@@ -187,8 +208,9 @@ class LoanService:
                 INSERT INTO loans (
                     loan_number, customer_id, gold_description, gold_weight, gold_purity,
                     loan_amount, interest_rate, start_date, due_date, remarks,
+                    locker_no, estimated_value, ltv_percent, notice_status,
                     status, created_at, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not sent', 'open', ?, ?)
                 """,
                 (
                     number,
@@ -201,6 +223,9 @@ class LoanService:
                     payload["start_date"],
                     payload["due_date"],
                     payload["remarks"],
+                    payload["locker_no"],
+                    payload["estimated_value"],
+                    payload["ltv_percent"],
                     now_iso(),
                     user.id,
                 ),
@@ -251,6 +276,7 @@ class LoanService:
             UPDATE loans SET
                 customer_id = ?, gold_description = ?, gold_weight = ?, gold_purity = ?,
                 loan_amount = ?, interest_rate = ?, start_date = ?, due_date = ?, remarks = ?,
+                locker_no = ?, estimated_value = ?, ltv_percent = ?,
                 updated_at = ?, updated_by = ?
             WHERE id = ?
             """,
@@ -264,6 +290,9 @@ class LoanService:
                 payload["start_date"],
                 payload["due_date"],
                 payload["remarks"],
+                payload["locker_no"],
+                payload["estimated_value"],
+                payload["ltv_percent"],
                 now_iso(),
                 user.id,
                 loan_id,
@@ -292,11 +321,16 @@ class LoanService:
         interest_collected: float,
         total_received: float,
         remarks: str | None,
+        close_type: str = "Redeemed",
     ) -> dict:
         require_owner(user)
         current = self.get(loan_id)
         if current["status"] != "open":
             raise ValidationError("Only open loans can be closed.")
+        from goldmine.catalog import CLOSE_TYPES
+
+        if close_type not in CLOSE_TYPES:
+            raise ValidationError("Choose how this loan was closed.")
         try:
             datetime.strptime(closing_date, "%Y-%m-%d")
             interest = float(interest_collected)
@@ -318,6 +352,7 @@ class LoanService:
                 total_received = ?,
                 closing_remarks = ?,
                 closed_by = ?,
+                close_type = ?,
                 updated_at = ?,
                 updated_by = ?
             WHERE id = ?
@@ -329,6 +364,7 @@ class LoanService:
                 round(total, 2),
                 notes,
                 user.id,
+                close_type,
                 now_iso(),
                 user.id,
                 loan_id,
@@ -344,6 +380,7 @@ class LoanService:
             previous={"status": current["status"]},
             new={
                 "status": "closed",
+                "close_type": close_type,
                 "closing_date": closing_date,
                 "interest_collected": interest,
                 "total_received": total,

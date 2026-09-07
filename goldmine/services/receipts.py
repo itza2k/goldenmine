@@ -33,7 +33,7 @@ class ReceiptService:
         c.drawString(18 * mm, height - 16 * mm, self.settings.get("shop_name", "Goldmine"))
         c.setFillColorRGB(1, 1, 1)
         c.setFont("Helvetica", 10)
-        c.drawRightString(width - 18 * mm, height - 14 * mm, "GOLD LOAN RECEIPT")
+        c.drawRightString(width - 18 * mm, height - 14 * mm, "PLEDGE TICKET")
         c.setFillColorRGB(0.1, 0.1, 0.1)
         y = height - 40 * mm
         c.setFont("Helvetica", 9)
@@ -65,6 +65,9 @@ class ReceiptService:
         line("Gold", loan.get("gold_description"))
         line("Weight", f"{loan.get('gold_weight')} g")
         line("Purity", loan.get("gold_purity") or "—")
+        line("Locker", loan.get("locker_no") or "—")
+        for item in loan.get("items") or []:
+            line("Ornament", f"{item.get('jewellery_type')}  {item.get('net_weight')} g")
         line("Loan amount", money(loan.get("loan_amount"), symbol))
         line("Interest rate", f"{loan.get('interest_rate')}% per month")
         line("Start date", format_date(loan.get("start_date")))
