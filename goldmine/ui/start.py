@@ -22,11 +22,11 @@ class StartFrame(ctk.CTkFrame):
         wrap.grid(row=0, column=0)
 
         shop = ctx.settings.get("shop_name", "Goldmine")
-        ctk.CTkLabel(wrap, text="GOLDMINE", text_color=p["muted"], font=ui_font(12, "bold")).pack(anchor="w")
-        ctk.CTkLabel(wrap, text=shop, text_color=p["text"], font=ui_font(28, "bold")).pack(anchor="w", pady=(4, 0))
+        ctk.CTkLabel(wrap, text="Goldmine", text_color=p["muted"], font=ui_font(12, "bold")).pack(anchor="w")
+        ctk.CTkLabel(wrap, text=shop, text_color=p["text"], font=ui_font(26, "bold")).pack(anchor="w", pady=(4, 0))
         ctk.CTkLabel(
             wrap,
-            text="Choose who is opening the shop, or skip and type a username.",
+            text="Select a person to continue.",
             text_color=p["muted"],
             font=ui_font(13),
         ).pack(anchor="w", pady=(6, 18))

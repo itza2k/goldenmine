@@ -63,14 +63,14 @@ class DashboardPage(ctk.CTkFrame):
         self.cust_list = ctk.CTkScrollableFrame(self.cust_box, fg_color="transparent")
         self.cust_list.pack(fill="both", expand=True, padx=8, pady=(0, 10))
 
-    def _row(self, parent, left: str, middle: str, right: str, gold_left: bool = False):
+    def _row(self, parent, left: str, middle: str, right: str, gold_left: bool = False, tone: str = ""):
         p = palette()
-        line = ctk.CTkFrame(parent, fg_color=p["soft"], corner_radius=10)
+        line = ctk.CTkFrame(parent, fg_color=p["soft"], corner_radius=8)
         line.pack(fill="x", padx=8, pady=4)
         ctk.CTkLabel(
             line,
             text=left,
-            text_color=p["muted"] if gold_left else p["text"],
+            text_color=p["text"],
             font=ui_font(12, "bold"),
         ).pack(side="left", padx=12, pady=10)
         ctk.CTkLabel(line, text=middle, text_color=p["text"], font=ui_font(12)).pack(side="left")
@@ -97,7 +97,7 @@ class DashboardPage(ctk.CTkFrame):
                 anchor="w", padx=12, pady=8
             )
         for row in data["due_soon"]:
-            self._row(self.due_list, row["loan_number"], row["customer_name"], format_date(row["due_date"]), True)
+            self._row(self.due_list, row["loan_number"], row["customer_name"], format_date(row["due_date"]), tone="soon")
 
         for w in self.cust_list.winfo_children():
             w.destroy()

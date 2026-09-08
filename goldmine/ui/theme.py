@@ -49,4 +49,24 @@ def palette() -> dict:
         "nav_hover": "#2A2A2A",
         "nav_text": "#F2F2F0",
         "on_ink": "#F5F5F3",
+        "go": "#146C43",
+        "go_bg": "#D8F3E3",
+        "stop": "#B42318",
+        "stop_bg": "#FCDADA",
+        "wait": "#B54708",
+        "wait_bg": "#FFE8B8",
+        "info_bg": "#D6E9FF",
+        "info_fg": "#175CD3",
+        "closed_bg": "#E4E7EC",
+        "closed_fg": "#344054",
     }
+
+
+TICKET_TONES = {
+    "open": ("go_bg", "go", "OPEN"),
+    "overdue": ("stop_bg", "stop", "OVERDUE"),
+    "soon": ("wait_bg", "wait", "DUE SOON"),
+    "closed": ("closed_bg", "closed_fg", "CLOSED"),
+    "edit": ("info_bg", "info_fg", "EDIT 5 MIN"),
+    "draft": ("soft", "text", "DRAFT"),
+}

@@ -11,7 +11,7 @@ class Card(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         p = palette()
         kwargs.setdefault("fg_color", p["card"])
-        kwargs.setdefault("corner_radius", 16)
+        kwargs.setdefault("corner_radius", 10)
         kwargs.setdefault("border_width", 1)
         kwargs.setdefault("border_color", p["border"])
         super().__init__(master, **kwargs)
@@ -23,7 +23,7 @@ class PageHeader(ctk.CTkFrame):
         p = palette()
         left = ctk.CTkFrame(self, fg_color="transparent")
         left.pack(side="left", fill="x", expand=True)
-        ctk.CTkLabel(left, text=title, font=ui_font(26, "bold"), text_color=p["text"]).pack(anchor="w")
+        ctk.CTkLabel(left, text=title, font=ui_font(22, "bold"), text_color=p["text"]).pack(anchor="w")
         self.sub = ctk.CTkLabel(left, text=subtitle, font=ui_font(13), text_color=p["muted"])
         self.sub.pack(anchor="w", pady=(2, 0))
         if action:
@@ -48,10 +48,12 @@ class SectionLabel(ctk.CTkLabel):
 class StatusBadge(ctk.CTkLabel):
     def __init__(self, master, text: str = "Open", kind: str = "ok"):
         colors = {
-            "ok": ("#E8F6EE", "#087443"),
-            "warn": ("#F8EED8", "#8A6A12"),
-            "lock": ("#F4E8E6", "#B42318"),
-            "info": ("#E8EEF6", NAVY),
+            "ok": ("#F5F5F3", "#146C43"),
+            "warn": ("#F5F5F3", "#9A6700"),
+            "lock": ("#F5F5F3", "#B42318"),
+            "info": ("#F5F5F3", "#344054"),
+            "soon": ("#F5F5F3", "#9A6700"),
+            "closed": ("#F5F5F3", "#667085"),
         }
         bg, fg = colors.get(kind, colors["info"])
         super().__init__(
@@ -67,10 +69,12 @@ class StatusBadge(ctk.CTkLabel):
 
     def set(self, text: str, kind: str) -> None:
         colors = {
-            "ok": ("#E8F6EE", "#087443"),
-            "warn": ("#F8EED8", "#8A6A12"),
-            "lock": ("#F4E8E6", "#B42318"),
-            "info": ("#E8EEF6", NAVY),
+            "ok": ("#F5F5F3", "#146C43"),
+            "warn": ("#F5F5F3", "#9A6700"),
+            "lock": ("#F5F5F3", "#B42318"),
+            "info": ("#F5F5F3", "#344054"),
+            "soon": ("#F5F5F3", "#9A6700"),
+            "closed": ("#F5F5F3", "#667085"),
         }
         bg, fg = colors.get(kind, colors["info"])
         self.configure(text=text, fg_color=bg, text_color=fg)
@@ -215,26 +219,46 @@ def style_treeview(tree: ttk.Treeview) -> None:
         background=p["card"],
         fieldbackground=p["card"],
         foreground=p["text"],
-        rowheight=34,
+        rowheight=36,
         borderwidth=0,
         font=("Helvetica Neue", 12),
     )
     style.configure(
         "Gold.Treeview.Heading",
-        background=NAVY,
-        foreground="#F5F5F3",
+        background="#F7F7F5",
+        foreground=NAVY,
         relief="flat",
         font=("Helvetica Neue", 11, "bold"),
         padding=6,
     )
-    style.map("Gold.Treeview", background=[("selected", "#E8E8E4")], foreground=[("selected", NAVY)])
+    style.map("Gold.Treeview", background=[("selected", "#EFEFEA")], foreground=[("selected", NAVY)])
     tree.configure(style="Gold.Treeview")
+
+
+class ToneButton(ctk.CTkButton):
+    def __init__(self, master, tone: str = "ink", **kwargs):
+        p = palette()
+        tones = {
+            "ink": (p["text"], "#2A2A2A", p["card"]),
+            "go": (p["go"], "#0F5132", "#FFFFFF"),
+            "stop": (p["stop"], "#912018", "#FFFFFF"),
+            "wait": (p["wait"], "#93370D", "#FFFFFF"),
+            "info": (p["info_fg"], "#0B4AA8", "#FFFFFF"),
+        }
+        fg, hover, text = tones.get(tone, tones["ink"])
+        kwargs.setdefault("fg_color", fg)
+        kwargs.setdefault("hover_color", hover)
+        kwargs.setdefault("text_color", text)
+        kwargs.setdefault("font", ui_font(13, "bold"))
+        kwargs.setdefault("height", 40)
+        kwargs.setdefault("corner_radius", 8)
+        super().__init__(master, **kwargs)
 
 
 class DataTable(ctk.CTkFrame):
     def __init__(self, master, columns: list[tuple[str, str, int]], on_select=None):
         p = palette()
-        super().__init__(master, fg_color=p["card"], corner_radius=16, border_width=1, border_color=p["border"])
+        super().__init__(master, fg_color=p["card"], corner_radius=10, border_width=1, border_color=p["border"])
         self.columns = columns
         self.on_select = on_select
         ids = [c[0] for c in columns]
@@ -247,6 +271,12 @@ class DataTable(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
         vsb.pack(side="right", fill="y", pady=10, padx=(0, 10))
         style_treeview(self.tree)
+        self.tree.tag_configure("open", background=p["card"], foreground=p["text"])
+        self.tree.tag_configure("overdue", background=p["card"], foreground=p["stop"])
+        self.tree.tag_configure("soon", background=p["card"], foreground=p["wait"])
+        self.tree.tag_configure("closed", background=p["card"], foreground=p["muted"])
+        self.tree.tag_configure("edit", background=p["card"], foreground=p["text"])
+        self.tree.tag_configure("draft", background=p["card"], foreground=p["text"])
         self.tree.bind("<<TreeviewSelect>>", self._selected)
         self.tree.bind("<Double-1>", self._selected)
 
@@ -262,9 +292,9 @@ class DataTable(ctk.CTkFrame):
             values = [row.get(c[0], "") for c in self.columns]
             iid = str(row.get(key, ""))
             try:
-                self.tree.insert("", "end", iid=iid, values=values)
+                self.tree.insert("", "end", iid=iid, values=values, tags=(row.get("_tag") or "open",))
             except Exception:
-                self.tree.insert("", "end", values=values)
+                self.tree.insert("", "end", values=values, tags=(row.get("_tag") or "open",))
 
     def selected_id(self) -> str | None:
         sel = self.tree.selection()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import customtkinter as ctk
 
 from goldmine.app_context import AppContext
@@ -20,6 +22,21 @@ from goldmine.ui.widgets import (
 from goldmine.util import format_date, money, now
 
 
+def ticket_tag(loan: dict) -> str:
+    if loan.get("status") == "closed":
+        return "closed"
+    today = now().date().isoformat()
+    due = loan.get("due_date") or ""
+    if due and due < today:
+        return "overdue"
+    soon = (now().date() + timedelta(days=7)).isoformat()
+    if due and today <= due <= soon:
+        return "soon"
+    if loan.get("status") == "open" and not loan.get("is_locked"):
+        return "edit"
+    return "open"
+
+
 class LoansPage(ctk.CTkFrame):
     def __init__(self, master, ctx: AppContext):
         super().__init__(master, fg_color="transparent")
@@ -29,16 +46,14 @@ class LoansPage(ctk.CTkFrame):
         self._tick_job = None
         p = palette()
 
-        PageHeader(self, "Pledge tickets", "Issue, collect, renew, or release a pledge.", ("New ticket", self._new)).pack(
-            fill="x"
-        )
+        PageHeader(self, "Tickets", "Issue, collect, and close pledges.", ("New ticket", self._new)).pack(fill="x")
 
         tools = ctk.CTkFrame(self, fg_color="transparent")
         tools.pack(fill="x", pady=(12, 10))
         self.search = ctk.CTkEntry(
             tools,
-            placeholder_text="Loan number, customer, or phone",
-            height=40,
+            placeholder_text="Search ticket, name, or phone",
+            height=36,
             corner_radius=8,
             border_color=p["border"],
             font=ui_font(13),
@@ -46,7 +61,17 @@ class LoansPage(ctk.CTkFrame):
         self.search.pack(side="left", fill="x", expand=True)
         self.search.bind("<KeyRelease>", lambda e: self.refresh())
         self.status = ctk.CTkOptionMenu(
-            tools, values=LOAN_FILTERS, command=lambda _: self.refresh(), width=140, height=36
+            tools,
+            values=LOAN_FILTERS,
+            command=lambda _: self.refresh(),
+            width=130,
+            height=36,
+            fg_color=NAVY,
+            button_color="#2A2A2A",
+            button_hover_color="#3A3A3A",
+            text_color="#F5F5F3",
+            dropdown_fg_color=NAVY,
+            dropdown_text_color="#F5F5F3",
         )
         self.status.set("Open")
         self.status.pack(side="left", padx=(10, 0))
@@ -60,18 +85,24 @@ class LoansPage(ctk.CTkFrame):
         self.table = DataTable(
             split,
             [
-                ("loan_number", "Loan", 110),
-                ("customer_name", "Customer", 140),
-                ("loan_amount", "Amount", 90),
-                ("status", "Status", 70),
-                ("lock", "Edit", 70),
+                ("loan_number", "Ticket", 110),
+                ("customer_name", "Customer", 150),
+                ("loan_amount", "Amount", 100),
+                ("due", "Due", 90),
+                ("status", "Status", 100),
             ],
             on_select=self._from_table,
         )
         self.table.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
 
-        panel = ctk.CTkFrame(split, fg_color=p["card"], corner_radius=16, border_width=1, border_color=p["border"])
-        panel.grid(row=0, column=1, sticky="nsew")
+        wrap = ctk.CTkFrame(split, fg_color="transparent")
+        wrap.grid(row=0, column=1, sticky="nsew")
+        self.tone_bar = ctk.CTkFrame(wrap, width=4, corner_radius=2, fg_color=p["border"])
+        self.tone_bar.pack(side="left", fill="y", padx=(0, 8))
+        self.tone_bar.pack_propagate(False)
+
+        panel = ctk.CTkFrame(wrap, fg_color=p["card"], corner_radius=10, border_width=1, border_color=p["border"])
+        panel.pack(side="left", fill="both", expand=True)
         panel.grid_rowconfigure(1, weight=1)
         panel.grid_columnconfigure(0, weight=1)
 
@@ -90,7 +121,7 @@ class LoansPage(ctk.CTkFrame):
         self.lock_banner = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=p["muted"], font=ui_font(12))
         self.lock_banner.pack(anchor="w", padx=8, pady=(0, 6))
 
-        SectionLabel(form, "1  Customer").pack(anchor="w", padx=8, pady=(4, 4))
+        SectionLabel(form, "Customer").pack(anchor="w", padx=8, pady=(4, 4))
         self.cust_search = ctk.CTkEntry(form, placeholder_text="Search existing customer", height=36, corner_radius=8)
         self.cust_search.pack(fill="x", padx=8)
         self.cust_search.bind("<KeyRelease>", lambda e: self._search_customers())
@@ -105,11 +136,12 @@ class LoansPage(ctk.CTkFrame):
         self.quick_name.grid(row=0, column=0, sticky="ew", padx=(0, 6))
         self.quick_phone = LabeledEntry(quick, "New phone")
         self.quick_phone.grid(row=0, column=1, sticky="ew")
-        GhostButton(form, text="Add this customer", height=34, command=self._quick_customer).pack(
+        quick.pack_forget()
+        GhostButton(form, text="New customer", height=34, command=self._customer_popup).pack(
             fill="x", padx=8, pady=(6, 8)
         )
 
-        SectionLabel(form, "2  Gold in vault").pack(anchor="w", padx=8, pady=(6, 4))
+        SectionLabel(form, "Ornament").pack(anchor="w", padx=8, pady=(6, 4))
         self.f_jtype = LabeledDropdown(form, "Jewellery type", JEWELLERY_TYPES)
         self.f_jtype.pack(fill="x", padx=8, pady=3)
         self.f_gold = LabeledEntry(form, "Description")
@@ -132,11 +164,11 @@ class LoansPage(ctk.CTkFrame):
         self.f_locker.pack(fill="x", padx=8, pady=3)
         self.est_lbl = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=p["muted"], font=ui_font(12))
         self.est_lbl.pack(anchor="w", padx=8)
-        GhostButton(form, text="Value against today's gold rate", height=34, command=self._estimate).pack(
+        GhostButton(form, text="Estimate value", height=34, command=self._estimate_popup).pack(
             fill="x", padx=8, pady=(4, 8)
         )
 
-        SectionLabel(form, "3  Loan").pack(anchor="w", padx=8, pady=(10, 4))
+        SectionLabel(form, "Terms").pack(anchor="w", padx=8, pady=(10, 4))
         g3 = ctk.CTkFrame(form, fg_color="transparent")
         g3.pack(fill="x", padx=8)
         g3.grid_columnconfigure((0, 1), weight=1)
@@ -169,13 +201,30 @@ class LoansPage(ctk.CTkFrame):
         self.save_btn.pack(fill="x")
         row_b = ctk.CTkFrame(foot, fg_color="transparent")
         row_b.pack(fill="x", pady=(8, 0))
-        self.print_btn = GhostButton(row_b, text="Print receipt", command=self._print)
+        self.print_btn = GhostButton(row_b, text="Print", command=self._print)
         self.print_btn.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        self.pay_btn = GhostButton(row_b, text="Collect", command=self._pay, width=90)
+        self.pay_btn = GhostButton(row_b, text="Collect", command=self._pay, width=100)
         self.pay_btn.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        self.close_btn = GoldButton(row_b, text="Close", command=self._close, width=90)
-        self.reopen_btn = GhostButton(row_b, text="Reopen", command=self._reopen, width=90)
-        self.renew_btn = GhostButton(foot, text="Renew due date (owner)", command=self._renew)
+        self.close_btn = GhostButton(row_b, text="Close", command=self._close, width=100)
+        self.close_btn.configure(text_color=p["stop"], border_color=p["stop"])
+        self.reopen_btn = GhostButton(row_b, text="Reopen", command=self._reopen, width=100)
+        self.more_btn = GhostButton(foot, text="More", command=self._more_popup)
+        self.more_btn.pack(fill="x", pady=(8, 0))
+        self.renew_btn = GhostButton(foot, text="Renew due date", command=self._renew)
+        self.renew_btn.pack_forget()
+        self._set_tone("draft")
+
+    def _set_tone(self, tag: str):
+        p = palette()
+        colors = {
+            "open": p["go"],
+            "overdue": p["stop"],
+            "soon": p["wait"],
+            "closed": p["border"],
+            "edit": p["text"],
+            "draft": p["border"],
+        }
+        self.tone_bar.configure(fg_color=colors.get(tag, p["border"]))
 
     def _rate_map(self) -> dict[str, float]:
         rates = self.ctx.loans.active_rates()
@@ -201,14 +250,23 @@ class LoansPage(ctk.CTkFrame):
         symbol = self.ctx.settings.get("currency_symbol", "₹")
         view = []
         for r in rows:
+            tag = ticket_tag(r)
+            labels = {
+                "open": "Open",
+                "overdue": "Overdue",
+                "soon": "Due soon",
+                "closed": "Closed",
+                "edit": "Open",
+            }
             view.append(
                 {
                     "id": r["id"],
                     "loan_number": r["loan_number"],
                     "customer_name": r["customer_name"],
                     "loan_amount": money(r["loan_amount"], symbol),
-                    "status": r["status"].title(),
-                    "lock": "5 min" if not r["is_locked"] and r["status"] == "open" else "Locked",
+                    "due": format_date(r.get("due_date")) if r.get("due_date") else "—",
+                    "status": labels.get(tag, tag.upper()),
+                    "_tag": tag,
                 }
             )
         self.table.set_rows(view)
@@ -280,6 +338,7 @@ class LoansPage(ctk.CTkFrame):
         self.reopen_btn.pack_forget()
         self.renew_btn.pack_forget()
         self._load_rates()
+        self._set_tone("draft")
         self.cust_search.focus()
 
     def _from_table(self, row: dict):
@@ -294,9 +353,12 @@ class LoansPage(ctk.CTkFrame):
         self.customer_id = loan["customer_id"]
         self.form_title.configure(text=loan["loan_number"])
         if loan["status"] == "closed":
-            self.badge.set("Closed", "lock")
+            self.badge.set("Closed", "closed")
         else:
-            self.badge.set("Open", "ok")
+            tag = ticket_tag(loan)
+            kind = {"overdue": "lock", "soon": "soon", "edit": "info", "open": "ok"}.get(tag, "ok")
+            self.badge.set({"overdue": "Overdue", "soon": "Due soon", "edit": "Open", "open": "Open"}.get(tag, "Open"), kind)
+        self._set_tone(ticket_tag(loan))
         self.sel_cust.configure(text=f"Using {loan['customer_name']}  ·  {loan['customer_phone']}")
         self.f_gold.set(loan["gold_description"])
         self.f_weight.set(loan["gold_weight"])
@@ -506,7 +568,32 @@ class LoansPage(ctk.CTkFrame):
             "condition_label": self.f_cond.get(),
         }
 
-    def _estimate(self):
+    def _customer_popup(self):
+        p = palette()
+        win = ctk.CTkToplevel(self)
+        win.title("New customer")
+        win.geometry("420x280")
+        win.transient(self.winfo_toplevel())
+        win.grab_set()
+        box = ctk.CTkFrame(win, fg_color=p["card"])
+        box.pack(fill="both", expand=True)
+        ctk.CTkLabel(box, text="Add a customer", font=ui_font(18, "bold"), text_color=p["text"]).pack(
+            padx=20, pady=(18, 8), anchor="w"
+        )
+        name = LabeledEntry(box, "Full name")
+        name.pack(fill="x", padx=20, pady=4)
+        phone = LabeledEntry(box, "Phone")
+        phone.pack(fill="x", padx=20, pady=4)
+
+        def go():
+            self.quick_name.set(name.get())
+            self.quick_phone.set(phone.get())
+            self._quick_customer()
+            win.destroy()
+
+        GoldButton(box, text="Save customer", command=go).pack(padx=20, pady=16, fill="x")
+
+    def _estimate_popup(self):
         try:
             gross = float(self.f_weight.get() or 0)
             stone = float(self.f_stone.get() or 0)
@@ -515,11 +602,61 @@ class LoansPage(ctk.CTkFrame):
             handle_error(self, exc if isinstance(exc, AppError) else AppError("Enter a valid weight first."))
             return
         symbol = self.ctx.settings.get("currency_symbol", "₹")
-        self.est_lbl.configure(
-            text=f"Fine {est['fine_gold']} g  ·  Value {money(est['estimated_value'], symbol)}  ·  Max loan {money(est['max_loan'], symbol)} at {est['ltv']}% LTV"
+        p = palette()
+        win = ctk.CTkToplevel(self)
+        win.title("Gold value")
+        win.geometry("440x260")
+        win.transient(self.winfo_toplevel())
+        win.grab_set()
+        box = ctk.CTkFrame(win, fg_color=p["card"])
+        box.pack(fill="both", expand=True)
+        ctk.CTkLabel(box, text="Today's valuation", font=ui_font(18, "bold"), text_color=p["text"]).pack(
+            padx=20, pady=(18, 8), anchor="w"
         )
-        if not self.f_amount.get().strip():
-            self.f_amount.set(est["max_loan"])
+        msg = (
+            f"Fine gold {est['fine_gold']} g\n"
+            f"Value {money(est['estimated_value'], symbol)}\n"
+            f"Maximum loan {money(est['max_loan'], symbol)} at {est['ltv']}% LTV"
+        )
+        ctk.CTkLabel(box, text=msg, justify="left", text_color=p["text"], font=ui_font(13)).pack(
+            padx=20, anchor="w"
+        )
+
+        def use():
+            self.est_lbl.configure(text=msg.replace("\n", "  ·  "))
+            if not self.f_amount.get().strip():
+                self.f_amount.set(est["max_loan"])
+            win.destroy()
+
+        GoldButton(box, text="Use this amount", command=use).pack(padx=20, pady=16, fill="x")
+
+    def _more_popup(self):
+        p = palette()
+        win = ctk.CTkToplevel(self)
+        win.title("Ticket actions")
+        win.geometry("360x320")
+        win.transient(self.winfo_toplevel())
+        win.grab_set()
+        box = ctk.CTkFrame(win, fg_color=p["card"])
+        box.pack(fill="both", expand=True)
+        ctk.CTkLabel(box, text="More actions", font=ui_font(18, "bold"), text_color=p["text"]).pack(
+            padx=20, pady=(18, 10), anchor="w"
+        )
+
+        def run(fn):
+            win.destroy()
+            fn()
+
+        GhostButton(box, text="Print receipt", command=lambda: run(self._print)).pack(fill="x", padx=20, pady=4)
+        GhostButton(box, text="Collect payment", command=lambda: run(self._pay)).pack(fill="x", padx=20, pady=4)
+        close_more = GhostButton(box, text="Close loan", command=lambda: run(self._close))
+        close_more.pack(fill="x", padx=20, pady=4)
+        close_more.configure(text_color=p["stop"], border_color=p["stop"])
+        GhostButton(box, text="Renew due date", command=lambda: run(self._renew)).pack(fill="x", padx=20, pady=4)
+        GhostButton(box, text="Reopen ticket", command=lambda: run(self._reopen)).pack(fill="x", padx=20, pady=4)
+
+    def _estimate(self):
+        self._estimate_popup()
 
     def _print(self):
         if not self.current_id:

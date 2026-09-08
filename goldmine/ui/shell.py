@@ -34,7 +34,7 @@ class ShellFrame(ctk.CTkFrame):
         ctk.CTkLabel(mark, text="G", text_color=NAVY, font=ui_font(18, "bold")).pack(expand=True)
         names = ctk.CTkFrame(brand, fg_color="transparent")
         names.pack(side="left", padx=(10, 0), fill="x", expand=True)
-        ctk.CTkLabel(names, text="GOLD MINE", text_color=p["on_ink"], font=ui_font(15, "bold"), anchor="w").pack(fill="x")
+        ctk.CTkLabel(names, text="Goldmine", text_color=p["on_ink"], font=ui_font(15, "bold"), anchor="w").pack(fill="x")
         self.shop_lbl = ctk.CTkLabel(names, text="", text_color="#A8A8A4", font=ui_font(11), anchor="w")
         self.shop_lbl.pack(fill="x")
 

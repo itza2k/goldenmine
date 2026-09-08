@@ -25,7 +25,7 @@ class LoginFrame(ctk.CTkFrame):
         inner.pack(padx=40, pady=32)
 
         shop = ctx.settings.get("shop_name", "Goldmine")
-        ctk.CTkLabel(inner, text="GOLDMINE", text_color=p["muted"], font=ui_font(12, "bold")).pack(anchor="w")
+        ctk.CTkLabel(inner, text="Goldmine", text_color=p["muted"], font=ui_font(12, "bold")).pack(anchor="w")
         title = "Enter password" if username else "Sign in"
         ctk.CTkLabel(inner, text=title, text_color=p["text"], font=ui_font(28, "bold")).pack(anchor="w", pady=(2, 0))
         ctk.CTkLabel(inner, text=shop, text_color=p["muted"], font=ui_font(13)).pack(anchor="w", pady=(0, 18))
