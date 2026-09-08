@@ -41,6 +41,7 @@ class SettingsService:
             "gold_rate_22k",
             "gold_rate_24k",
             "min_interest_days",
+            "skip_profiles",
         }
         for key, value in values.items():
             if key not in allowed:
@@ -58,12 +59,21 @@ class SettingsService:
                 raise ValidationError("Shop name is required.")
             if key == "appearance_mode" and value not in ("light", "dark", "system"):
                 raise ValidationError("Invalid appearance mode.")
+            if key == "skip_profiles" and str(value) not in ("0", "1"):
+                raise ValidationError("skip_profiles must be 0 or 1.")
             self.db.execute(
                 "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                 (key, str(value).strip()),
             )
         self.db.commit()
         self.audit.record(user, "settings.update", entity_type="settings", previous=previous, new=self.all())
+
+    def set_skip_profiles(self, skip: bool) -> None:
+        self.db.execute(
+            "INSERT INTO settings (key, value) VALUES ('skip_profiles', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            ("1" if skip else "0",),
+        )
+        self.db.commit()
 
     def list_rates(self, user: CurrentUser | None = None, *, active_only: bool = False) -> list[dict]:
         if active_only:

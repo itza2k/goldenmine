@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-from goldmine.db.connection import Database, row_to_dict
+from goldmine.db.connection import Database, row_to_dict, rows_to_dicts
 from goldmine.exceptions import AuthError, ValidationError
 from goldmine.security.passwords import hash_password, verify_password
 from goldmine.security.permissions import CurrentUser, ROLE_OWNER
@@ -31,6 +31,17 @@ class AuthService:
 
     def _clear(self, username: str) -> None:
         self._failures.pop(username.lower(), None)
+
+    def list_profiles(self) -> list[dict]:
+        rows = self.db.fetchall(
+            """
+            SELECT id, username, full_name, role
+            FROM users
+            WHERE is_active = 1
+            ORDER BY CASE role WHEN 'owner' THEN 0 ELSE 1 END, full_name COLLATE NOCASE
+            """
+        )
+        return rows_to_dicts(rows)
 
     def login(self, username: str, password: str) -> CurrentUser:
         username = (username or "").strip()

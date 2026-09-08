@@ -5,7 +5,7 @@ import customtkinter as ctk
 from goldmine.app_context import AppContext
 from goldmine.exceptions import AppError
 from goldmine.ui.dialogs import handle_error, owner_auth_dialog, prompt_text, show_info
-from goldmine.ui.theme import GOLD, NAVY, palette, ui_font
+from goldmine.ui.theme import NAVY, palette, ui_font
 from goldmine.catalog import CLOSE_TYPES, CONDITIONS, JEWELLERY_TYPES, LOAN_FILTERS, NOTICE_STATUS, PAYMENT_KINDS, PAYMENT_METHODS, PURITIES
 from goldmine.ui.widgets import (
     DataTable,
@@ -87,7 +87,7 @@ class LoansPage(ctk.CTkFrame):
         form = ctk.CTkScrollableFrame(panel, fg_color="transparent")
         form.grid(row=1, column=0, sticky="nsew", padx=8, pady=4)
         self.form = form
-        self.lock_banner = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=GOLD, font=ui_font(12))
+        self.lock_banner = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=p["muted"], font=ui_font(12))
         self.lock_banner.pack(anchor="w", padx=8, pady=(0, 6))
 
         SectionLabel(form, "1  Customer").pack(anchor="w", padx=8, pady=(4, 4))
@@ -130,7 +130,7 @@ class LoansPage(ctk.CTkFrame):
         self.f_cond.grid(row=0, column=1, sticky="ew", pady=3)
         self.f_locker = LabeledEntry(form, "Locker / packet no.")
         self.f_locker.pack(fill="x", padx=8, pady=3)
-        self.est_lbl = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=GOLD, font=ui_font(12))
+        self.est_lbl = ctk.CTkLabel(form, text="", wraplength=340, justify="left", text_color=p["muted"], font=ui_font(12))
         self.est_lbl.pack(anchor="w", padx=8)
         GhostButton(form, text="Value against today's gold rate", height=34, command=self._estimate).pack(
             fill="x", padx=8, pady=(4, 8)
@@ -145,7 +145,7 @@ class LoansPage(ctk.CTkFrame):
         rate_wrap = ctk.CTkFrame(g3, fg_color="transparent")
         rate_wrap.grid(row=0, column=1, sticky="ew", pady=3)
         ctk.CTkLabel(rate_wrap, text="Interest rate", text_color=p["muted"], font=ui_font(11, "bold")).pack(anchor="w")
-        self.rate_menu = ctk.CTkOptionMenu(rate_wrap, values=["—"], height=40, fg_color=NAVY, button_color=GOLD)
+        self.rate_menu = ctk.CTkOptionMenu(rate_wrap, values=["—"], height=40, fg_color=NAVY, button_color="#3A3A3A")
         self.rate_menu.pack(fill="x", pady=(5, 0))
         g4 = ctk.CTkFrame(form, fg_color="transparent")
         g4.pack(fill="x", padx=8)

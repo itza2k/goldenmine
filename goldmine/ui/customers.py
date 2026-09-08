@@ -6,7 +6,7 @@ from goldmine.app_context import AppContext
 from goldmine.exceptions import AppError
 from goldmine.paths import EDIT_WINDOW_SECONDS
 from goldmine.ui.dialogs import handle_error, show_info
-from goldmine.ui.theme import GOLD, palette, ui_font
+from goldmine.ui.theme import palette, ui_font
 from goldmine.catalog import ID_PROOF_TYPES, TITLES
 from goldmine.ui.widgets import DataTable, GoldButton, LabeledDropdown, LabeledEntry, PageHeader
 from goldmine.util import format_dt
@@ -83,7 +83,7 @@ class CustomersPage(ctk.CTkFrame):
         self.f_gov.pack(fill="x", pady=5)
         self.f_nom = LabeledEntry(inner, "Nominee (optional)")
         self.f_nom.pack(fill="x", pady=5)
-        self.lock_note = ctk.CTkLabel(inner, text="", wraplength=280, justify="left", text_color=GOLD, font=ui_font(12))
+        self.lock_note = ctk.CTkLabel(inner, text="", wraplength=280, justify="left", text_color=p["muted"], font=ui_font(12))
         self.lock_note.pack(anchor="w", pady=(10, 0))
         self.save_btn = GoldButton(inner, text="Save customer", command=self._save)
         self.save_btn.pack(fill="x", pady=(16, 0))

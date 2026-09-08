@@ -4,7 +4,7 @@ from tkinter import ttk
 
 import customtkinter as ctk
 
-from goldmine.ui.theme import GOLD, GOLD_HOVER, NAVY, palette, ui_font
+from goldmine.ui.theme import GOLD_HOVER, NAVY, palette, ui_font
 
 
 class Card(ctk.CTkFrame):
@@ -40,7 +40,7 @@ class SectionLabel(ctk.CTkLabel):
             master,
             text=text.upper(),
             font=ui_font(11, "bold"),
-            text_color=GOLD,
+            text_color=p["muted"],
             anchor="w",
         )
 
@@ -82,14 +82,14 @@ class StatCard(Card):
         p = palette()
         inner = ctk.CTkFrame(self, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=16, pady=14)
-        accent = ctk.CTkFrame(inner, fg_color=GOLD, width=3, height=46, corner_radius=2)
+        accent = ctk.CTkFrame(inner, fg_color=p["text"], width=2, height=46, corner_radius=1)
         accent.pack(side="left", fill="y", padx=(0, 12))
         body = ctk.CTkFrame(inner, fg_color="transparent")
         body.pack(side="left", fill="both", expand=True)
         ctk.CTkLabel(body, text=title, text_color=p["muted"], font=ui_font(11, "bold")).pack(anchor="w")
         self.value_lbl = ctk.CTkLabel(body, text=value, text_color=p["text"], font=ui_font(24, "bold"))
         self.value_lbl.pack(anchor="w", pady=(2, 0))
-        self.sub_lbl = ctk.CTkLabel(body, text=subtitle, text_color=GOLD, font=ui_font(12))
+        self.sub_lbl = ctk.CTkLabel(body, text=subtitle, text_color=p["muted"], font=ui_font(12))
         self.sub_lbl.pack(anchor="w")
 
     def set(self, value: str, subtitle: str | None = None) -> None:
@@ -142,12 +142,12 @@ class LabeledDropdown(ctk.CTkFrame):
             height=40,
             corner_radius=8,
             fg_color=NAVY,
-            button_color=GOLD,
+            button_color="#3A3A3A",
             button_hover_color=GOLD_HOVER,
-            text_color="#FFF6E4",
+            text_color="#F5F5F3",
             font=ui_font(13),
             dropdown_fg_color=NAVY,
-            dropdown_text_color="#FFF6E4",
+            dropdown_text_color="#F5F5F3",
             **kwargs,
         )
         self.menu.pack(fill="x", pady=(5, 0))
@@ -171,9 +171,10 @@ class LabeledDropdown(ctk.CTkFrame):
 
 class GoldButton(ctk.CTkButton):
     def __init__(self, master, **kwargs):
-        kwargs.setdefault("fg_color", GOLD)
+        p = palette()
+        kwargs.setdefault("fg_color", p["text"])
         kwargs.setdefault("hover_color", GOLD_HOVER)
-        kwargs.setdefault("text_color", NAVY)
+        kwargs.setdefault("text_color", p["card"])
         kwargs.setdefault("font", ui_font(13, "bold"))
         kwargs.setdefault("height", 40)
         kwargs.setdefault("corner_radius", 8)
@@ -197,8 +198,8 @@ class GhostButton(ctk.CTkButton):
 class QuietButton(ctk.CTkButton):
     def __init__(self, master, **kwargs):
         kwargs.setdefault("fg_color", "transparent")
-        kwargs.setdefault("hover_color", "#1B2740")
-        kwargs.setdefault("text_color", "#C9D0DC")
+        kwargs.setdefault("hover_color", "#2A2A2A")
+        kwargs.setdefault("text_color", "#E8E8E4")
         kwargs.setdefault("font", ui_font(13))
         kwargs.setdefault("height", 36)
         kwargs.setdefault("anchor", "w")
@@ -221,12 +222,12 @@ def style_treeview(tree: ttk.Treeview) -> None:
     style.configure(
         "Gold.Treeview.Heading",
         background=NAVY,
-        foreground="#F4EFE4",
+        foreground="#F5F5F3",
         relief="flat",
         font=("Helvetica Neue", 11, "bold"),
         padding=6,
     )
-    style.map("Gold.Treeview", background=[("selected", GOLD)], foreground=[("selected", NAVY)])
+    style.map("Gold.Treeview", background=[("selected", "#E8E8E4")], foreground=[("selected", NAVY)])
     tree.configure(style="Gold.Treeview")
 
 

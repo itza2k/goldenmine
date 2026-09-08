@@ -10,8 +10,7 @@ from goldmine.ui.loans import LoansPage
 from goldmine.ui.vault import VaultPage
 from goldmine.ui.reports import ReportsPage
 from goldmine.ui.settings import SettingsPage
-from goldmine.ui.theme import GOLD, NAVY, palette, ui_font
-from goldmine.ui.widgets import QuietButton
+from goldmine.ui.theme import NAVY, palette, ui_font
 
 
 class ShellFrame(ctk.CTkFrame):
@@ -29,14 +28,14 @@ class ShellFrame(ctk.CTkFrame):
 
         brand = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         brand.pack(fill="x", padx=18, pady=(22, 8))
-        mark = ctk.CTkFrame(brand, width=36, height=36, corner_radius=10, fg_color=GOLD)
+        mark = ctk.CTkFrame(brand, width=36, height=36, corner_radius=10, fg_color="#F5F5F3")
         mark.pack(side="left")
         mark.pack_propagate(False)
         ctk.CTkLabel(mark, text="G", text_color=NAVY, font=ui_font(18, "bold")).pack(expand=True)
         names = ctk.CTkFrame(brand, fg_color="transparent")
         names.pack(side="left", padx=(10, 0), fill="x", expand=True)
-        ctk.CTkLabel(names, text="GOLD MINE", text_color=GOLD, font=ui_font(15, "bold"), anchor="w").pack(fill="x")
-        self.shop_lbl = ctk.CTkLabel(names, text="", text_color="#A9B3C6", font=ui_font(11), anchor="w")
+        ctk.CTkLabel(names, text="GOLD MINE", text_color=p["on_ink"], font=ui_font(15, "bold"), anchor="w").pack(fill="x")
+        self.shop_lbl = ctk.CTkLabel(names, text="", text_color="#A8A8A4", font=ui_font(11), anchor="w")
         self.shop_lbl.pack(fill="x")
 
         self.jump = ctk.CTkEntry(
@@ -45,8 +44,8 @@ class ShellFrame(ctk.CTkFrame):
             height=36,
             corner_radius=8,
             border_width=0,
-            fg_color="#1A253A",
-            text_color="#F4EFE4",
+            fg_color="#2A2A2A",
+            text_color="#F5F5F3",
         )
         self.jump.pack(fill="x", padx=14, pady=(8, 14))
         self.jump.bind("<Return>", lambda e: self._jump())
@@ -69,10 +68,10 @@ class ShellFrame(ctk.CTkFrame):
         ctk.CTkFrame(self.sidebar, fg_color="transparent").pack(fill="both", expand=True)
 
         user = ctx.user
-        foot = ctk.CTkFrame(self.sidebar, fg_color="#1A253A", corner_radius=12)
+        foot = ctk.CTkFrame(self.sidebar, fg_color="#2A2A2A", corner_radius=12)
         foot.pack(fill="x", padx=12, pady=(0, 8))
         initial = (user.full_name[:1] if user else "?").upper()
-        avatar = ctk.CTkFrame(foot, width=32, height=32, corner_radius=16, fg_color=GOLD)
+        avatar = ctk.CTkFrame(foot, width=32, height=32, corner_radius=16, fg_color="#F5F5F3")
         avatar.pack(side="left", padx=10, pady=10)
         avatar.pack_propagate(False)
         ctk.CTkLabel(avatar, text=initial, text_color=NAVY, font=ui_font(13, "bold")).pack(expand=True)
@@ -88,7 +87,19 @@ class ShellFrame(ctk.CTkFrame):
             anchor="w",
         )
         self.role_lbl.pack(fill="x")
-        QuietButton(self.sidebar, text="Sign out", command=self._logout).pack(fill="x", padx=12, pady=(0, 16))
+        ctk.CTkButton(
+            self.sidebar,
+            text="Log out",
+            command=self._logout,
+            fg_color="transparent",
+            hover_color="#2A2A2A",
+            border_width=1,
+            border_color="#4A4A4A",
+            text_color="#F5F5F3",
+            font=ui_font(13),
+            height=36,
+            corner_radius=8,
+        ).pack(fill="x", padx=12, pady=(0, 16))
 
         self.pages["dashboard"] = DashboardPage(self.content, ctx, on_open_loans=lambda: self.show("loans"))
         self.pages["loans"] = LoansPage(self.content, ctx)
@@ -109,7 +120,7 @@ class ShellFrame(ctk.CTkFrame):
             self.sidebar,
             text=title.upper(),
             font=ui_font(10, "bold"),
-            text_color="#7E8AA0",
+            text_color="#8A8A86",
             anchor="w",
         ).pack(fill="x", padx=18, pady=(8, 4))
 
@@ -121,8 +132,8 @@ class ShellFrame(ctk.CTkFrame):
             height=38,
             corner_radius=8,
             fg_color="transparent",
-            hover_color="#1B2740",
-            text_color="#F4EFE4",
+            hover_color="#2A2A2A",
+            text_color="#F5F5F3",
             font=ui_font(13),
             command=lambda k=key: self.show(k),
         )
@@ -154,8 +165,8 @@ class ShellFrame(ctk.CTkFrame):
         for k, btn in self.nav_btns.items():
             active = k == key
             btn.configure(
-                fg_color=GOLD if active else "transparent",
-                text_color=NAVY if active else "#F4EFE4",
+                fg_color="#F5F5F3" if active else "transparent",
+                text_color=NAVY if active else "#F5F5F3",
                 font=ui_font(13, "bold" if active else "normal"),
             )
         for page in self.pages.values():

@@ -3,7 +3,7 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from goldmine.app_context import AppContext
-from goldmine.ui.theme import GOLD, palette, ui_font
+from goldmine.ui.theme import palette, ui_font
 from goldmine.ui.widgets import Card, PageHeader, StatCard
 from goldmine.util import format_date, money
 
@@ -70,7 +70,7 @@ class DashboardPage(ctk.CTkFrame):
         ctk.CTkLabel(
             line,
             text=left,
-            text_color=GOLD if gold_left else p["text"],
+            text_color=p["muted"] if gold_left else p["text"],
             font=ui_font(12, "bold"),
         ).pack(side="left", padx=12, pady=10)
         ctk.CTkLabel(line, text=middle, text_color=p["text"], font=ui_font(12)).pack(side="left")

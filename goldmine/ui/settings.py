@@ -44,6 +44,13 @@ class SettingsPage(ctk.CTkFrame):
         )
         self.appearance = ctk.CTkSegmentedButton(shop, values=["light", "dark", "system"], command=self._theme)
         self.appearance.pack(anchor="w")
+        self.skip_profiles = ctk.CTkCheckBox(
+            shop,
+            text="Skip the profile list when Goldmine opens (sign in with username)",
+            font=ui_font(12),
+            text_color=p["text"],
+        )
+        self.skip_profiles.pack(anchor="w", pady=(12, 0))
         GoldButton(shop, text="Save shop settings", command=self._save_shop).pack(anchor="w", pady=16)
 
         gold = self.tabs.tab("Gold rate")
@@ -132,6 +139,10 @@ class SettingsPage(ctk.CTkFrame):
         self.s_keep.set(s.get("backup_retain_count", "14"))
         self.s_foot.set(s.get("receipt_footer", ""))
         self.appearance.set(s.get("appearance_mode", "light"))
+        if s.get("skip_profiles", "0") == "1":
+            self.skip_profiles.select()
+        else:
+            self.skip_profiles.deselect()
         rate = self.ctx.shop.gold_rate()
         self.s_22.set(rate.get("rate_22k") or "")
         self.s_24.set(rate.get("rate_24k") or "")
@@ -170,6 +181,7 @@ class SettingsPage(ctk.CTkFrame):
                     "backup_retain_count": self.s_keep.get(),
                     "receipt_footer": self.s_foot.get(),
                     "appearance_mode": self.appearance.get(),
+                    "skip_profiles": "1" if self.skip_profiles.get() else "0",
                 },
             )
             show_info(self, "Settings saved.")

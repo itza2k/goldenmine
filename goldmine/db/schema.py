@@ -177,4 +177,5 @@ DEFAULT_SETTINGS = {
     "gold_rate_22k": "0",
     "gold_rate_24k": "0",
     "min_interest_days": "15",
+    "skip_profiles": "0",
 }
